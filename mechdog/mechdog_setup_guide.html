@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hiwonder MechDog ESP32 Setup and Robot Arm Control Guide</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #34495e;
+            margin-top: 30px;
+            border-left: 4px solid #3498db;
+            padding-left: 10px;
+        }
+        h3 {
+            color: #555;
+            margin-top: 20px;
+        }
+        code {
+            background-color: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            color: #c7254e;
+        }
+        pre {
+            background-color: #282c34;
+            color: #abb2bf;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            line-height: 1.4;
+        }
+        pre code {
+            color: #abb2bf;
+            background-color: transparent;
+            padding: 0;
+        }
+        .warning {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 10px 15px;
+            margin: 15px 0;
+        }
+        .success {
+            background-color: #d4edda;
+            border-left: 4px solid #28a745;
+            padding: 10px 15px;
+            margin: 15px 0;
+        }
+        .info {
+            background-color: #d1ecf1;
+            border-left: 4px solid #17a2b8;
+            padding: 10px 15px;
+            margin: 15px 0;
+        }
+        .error {
+            background-color: #f8d7da;
+            border-left: 4px solid #dc3545;
+            padding: 10px 15px;
+            margin: 15px 0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background-color: #3498db;
+            color: white;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        .step {
+            background-color: #e8f4f8;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 5px;
+            border-left: 4px solid #3498db;
+        }
+        .step-number {
+            display: inline-block;
+            background-color: #3498db;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 30px;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        ul {
+            margin: 10px 0;
+        }
+        li {
+            margin: 8px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 Hiwonder MechDog ESP32 Firmware Upload & Robot Arm Control Guide</h1>
+        <p><strong>Date:</strong> December 27, 2025</p>
+        <p><strong>Hardware:</strong> ESP32-D0WD (revision v1.1), 4MB Flash, MAC: 00:4b:12:07:30:f4</p>
+        <p><strong>Port:</strong> /dev/ttyUSB0</p>
+
+        <h2>📋 Table of Contents</h2>
+        <ul>
+            <li><a href="#overview">Overview</a></li>
+            <li><a href="#hardware-specs">Hardware Specifications</a></li>
+            <li><a href="#initial-setup">Initial Setup & Tools Installation</a></li>
+            <li><a href="#firmware-upload">Firmware Upload Process</a></li>
+            <li><a href="#basic-control">Basic Control Setup</a></li>
+            <li><a href="#robot-arm">Robot Arm Control Implementation</a></li>
+            <li><a href="#debugging">Debugging Process</a></li>
+            <li><a href="#final-fix">The Final Fix: Global Variable Declaration</a></li>
+            <li><a href="#useful-commands">Useful Commands Reference</a></li>
+            <li><a href="#troubleshooting">Troubleshooting</a></li>
+        </ul>
+
+        <h2 id="overview">🎯 Overview</h2>
+        <p>This guide documents the complete process of uploading custom firmware to the Hiwonder MechDog ESP32 controller and implementing robot arm control via the Wonderbot app. The project involved:</p>
+        <ul>
+            <li>Flashing MechDog firmware to ESP32</li>
+            <li>Creating custom MicroPython control code</li>
+            <li>Implementing BLE communication with Wonderbot app</li>
+            <li>Adding robot arm servo control (servos 9, 10, 11)</li>
+            <li>Debugging multi-threaded Python global variable issues</li>
+        </ul>
+
+        <h2 id="hardware-specs">🔧 Hardware Specifications</h2>
+        <table>
+            <tr>
+                <th>Component</th>
+                <th>Specification</th>
+            </tr>
+            <tr>
+                <td>Chip</td>
+                <td>ESP32-D0WD (revision v1.1)</td>
+            </tr>
+            <tr>
+                <td>Flash Size</td>
+                <td>4MB</td>
+            </tr>
+            <tr>
+                <td>MAC Address</td>
+                <td>00:4b:12:07:30:f4</td>
+            </tr>
+            <tr>
+                <td>Serial Port</td>
+                <td>/dev/ttyUSB0</td>
+            </tr>
+            <tr>
+                <td>Baud Rate</td>
+                <td>115200</td>
+            </tr>
+            <tr>
+                <td>Servos</td>
+                <td>1-8: Legs, 9-11: Robot Arm (base, shoulder, gripper)</td>
+            </tr>
+            <tr>
+                <td>Communication</td>
+                <td>BLE Slave Mode, Device Name: "MechDog_F4"</td>
+            </tr>
+        </table>
+
+        <h2 id="initial-setup">⚙️ Initial Setup & Tools Installation</h2>
+        
+        <div class="step">
+            <h3><span class="step-number">1</span>Create Python Virtual Environment</h3>
+            <pre><code>python3 -m venv ~/.venv
+source ~/.venv/bin/activate</code></pre>
+        </div>
+
+        <div class="step">
+            <h3><span class="step-number">2</span>Install Required Tools</h3>
+            <pre><code># Install esptool for firmware flashing
+pip install esptool
+
+# Install ampy for file upload to MicroPython
+pip install adafruit-ampy</code></pre>
+        </div>
+
+        <div class="step">
+            <h3><span class="step-number">3</span>Verify ESP32 Connection</h3>
+            <pre><code># Check if device is connected
+ls -l /dev/ttyUSB0
+
+# Test esptool connection
+esptool.py --port /dev/ttyUSB0 chip_id</code></pre>
+        </div>
+
+        <h2 id="firmware-upload">📤 Firmware Upload Process</h2>
+
+        <div class="info">
+            <strong>Firmware File:</strong> MechDog_250505_0x000.bin (1,747,968 bytes)<br>
+            <strong>Source:</strong> Located in mechdog/ directory
+        </div>
+
+        <div class="step">
+            <h3><span class="step-number">1</span>Erase Flash (If Needed)</h3>
+            <pre><code>~/.venv/bin/python -m esptool --port /dev/ttyUSB0 erase_flash</code></pre>
+            <div class="warning">
+                <strong>⚠️ Warning:</strong> This will completely erase all data on the ESP32!
+            </div>
+        </div>
+
+        <div class="step">
+            <h3><span class="step-number">2</span>Flash Firmware</h3>
+            <pre><code>~/.venv/bin/python -m esptool --port /dev/ttyUSB0 --baud 460800 \
+    write_flash --flash_size=detect 0x0 mechdog/MechDog_250505_0x000.bin</code></pre>
+        </div>
+
+        <div class="step">
+            <h3><span class="step-number">3</span>Reset ESP32</h3>
+            <pre><code>~/.venv/bin/python -m esptool --port /dev/ttyUSB0 run</code></pre>
+        </div>
+
+        <div class="success">
+            <strong>✅ Success Indicator:</strong> You should see "Hard resetting via RTS pin..."
+        </div>
+
+        <h2 id="basic-control">🎮 Basic Control Setup</h2>
+
+        <div class="step">
+            <h3><span class="step-number">1</span>Upload boot.py</h3>
+            <pre><code>~/.venv/bin/ampy -p /dev/ttyUSB0 -d 2 put mechdog/boot.py</code></pre>
+        </div>
+
+        <div class="step">
+            <h3><span class="step-number">2</span>Upload main.py</h3>
+            <pre><code>~/.venv/bin/ampy -p /dev/ttyUSB0 -d 2 put mechdog/main_working.py main.py</code></pre>
+        </div>
+
+        <div class="step">
+            <h3><span class="step-number">3</span>Reset to Run Code</h3>
+            <pre><code>~/.venv/bin/python -m esptool --port /dev/ttyUSB0 run</code></pre>
+        </div>
+
+        <h2 id="robot-arm">🦾 Robot Arm Control Implementation</h2>
+
+        <h3>Understanding the Command Protocol</h3>
+        <p>The Wonderbot app communicates via BLE using this protocol:</p>
+        <pre><code>CMD|&lt;command&gt;|&lt;data&gt;|$</code></pre>
+
+        <p>For robot arm control, the app sends <strong>Command 7</strong> with various action numbers:</p>
+
+        <table>
+            <tr>
+                <th>Action Number</th>
+                <th>Function</th>
+                <th>Parameters</th>
+            </tr>
+            <tr>
+                <td>3</td>
+                <td>Control Servo 9 (Base)</td>
+                <td>Direction: 1 (increase) or -1 (decrease)</td>
+            </tr>
+            <tr>
+                <td>4</td>
+                <td>Control Servo 10 (Shoulder)</td>
+                <td>Direction: 1 (increase) or -1 (decrease)</td>
+            </tr>
+            <tr>
+                <td>6</td>
+                <td>Open Gripper (Servo 11)</td>
+                <td>Position: 1500</td>
+            </tr>
+            <tr>
+                <td>7</td>
+                <td>Close Gripper (Servo 11)</td>
+                <td>Position: 1000</td>
+            </tr>
+        </table>
+
+        <h3>Key Code Components</h3>
+
+        <h4>Global Variables</h4>
+        <pre><code>_ARM_ACTION = 0  # Current arm action to execute
+servo9_pos = 500   # Servo 9 position tracking
+servo10_pos = 500  # Servo 10 position tracking
+servo11_pos = 1500 # Gripper position</code></pre>
+
+        <h4>BLE Command Handler (start_main thread)</h4>
+        <pre><code>def start_main():
+    global _ARM_ACTION  # ⚠️ CRITICAL: Must declare as global!
+    
+    while True:
+        if (_COMMAND == 7):
+            print("ARM COMMAND RECEIVED! Action:", _REC_PARSE_VALUE[1], "Full data:", _REC_PARSE_VALUE)
+            _ARM_ACTION = int(_REC_PARSE_VALUE[1])
+            # Don't continue - let it fall through to process</code></pre>
+
+        <h4>Servo Control Handler (start_main1 thread)</h4>
+        <pre><code>def start_main1():
+    global _ARM_ACTION, servo9_pos, servo10_pos, servo11_pos
+    
+    # Action 3: Control Servo 9 with direction
+    if _ARM_ACTION == 3:
+        direction = int(_REC_PARSE_VALUE[2]) if len(_REC_PARSE_VALUE) > 2 else 1
+        if direction == 1:
+            servo9_pos = min(servo9_pos + 100, 2500)
+        elif direction == -1:
+            servo9_pos = max(servo9_pos - 100, 500)
+        mechdog.set_servo(9, servo9_pos, 200)
+        _ARM_ACTION = 0
+    
+    # Action 4: Control Servo 10 with direction
+    elif _ARM_ACTION == 4:
+        direction = int(_REC_PARSE_VALUE[2]) if len(_REC_PARSE_VALUE) > 2 else 1
+        if direction == 1:
+            servo10_pos = min(servo10_pos + 100, 2500)
+        elif direction == -1:
+            servo10_pos = max(servo10_pos - 100, 500)
+        mechdog.set_servo(10, servo10_pos, 200)
+        _ARM_ACTION = 0
+    
+    # Action 6: Open gripper
+    elif _ARM_ACTION == 6:
+        mechdog.set_servo(11, 1500, 500)
+        servo11_pos = 1500
+        _ARM_ACTION = 0
+    
+    # Action 7: Close gripper
+    elif _ARM_ACTION == 7:
+        mechdog.set_servo(11, 1000, 500)
+        servo11_pos = 1000
+        _ARM_ACTION = 0</code></pre>
+
+        <h2 id="debugging">🔍 Debugging Process</h2>
+
+        <h3>Problems Encountered</h3>
+        
+        <div class="error">
+            <h4>Problem 1: Robot arm not responding to app commands</h4>
+            <ul>
+                <li><strong>Symptom:</strong> App could control legs/movement but not arm servos</li>
+                <li><strong>Initial assumption:</strong> App sends actions 6/7 for grasp/release (based on documentation)</li>
+                <li><strong>Reality:</strong> App sends different action numbers than documented</li>
+            </ul>
+        </div>
+
+        <div class="error">
+            <h4>Problem 2: Global variable not synchronized between threads</h4>
+            <ul>
+                <li><strong>Symptom:</strong> <code>_ARM_ACTION</code> was always 0 in start_main1() thread</li>
+                <li><strong>Debug output:</strong> "Checking _ARM_ACTION: 0" despite "ARM COMMAND RECEIVED! Action: 3"</li>
+                <li><strong>Root cause:</strong> Missing <code>global _ARM_ACTION</code> declaration in start_main()</li>
+            </ul>
+        </div>
+
+        <h3>Debugging Techniques Used</h3>
+
+        <div class="step">
+            <h3><span class="step-number">1</span>Add Debug Logging</h3>
+            <pre><code>print("Received command:", _COMMAND, "Data:", _REC_PARSE_VALUE)
+print("ARM COMMAND RECEIVED! Action:", _REC_PARSE_VALUE[1])
+print("Checking _ARM_ACTION:", _ARM_ACTION, "arm_step:", arm_step)</code></pre>
+        </div>
+
+        <div class="step">
+            <h3><span class="step-number">2</span>Monitor Serial Output with Screen</h3>
+            <pre><code># Kill any existing screen sessions
+killall screen
+
+# Wait for port to be ready
+sleep 3
+
+# Connect to ESP32
+screen /dev/ttyUSB0 115200</code></pre>
+            <div class="info">
+                <strong>💡 Tip:</strong> Press <code>Ctrl+A</code> then <code>D</code> to detach from screen without stopping it.<br>
+                Use <code>screen -r</code> to reattach to a detached session.
+            </div>
+        </div>
+
+        <div class="step">
+            <h3><span class="step-number">3</span>Discover Actual Commands</h3>
+            <p>By monitoring with screen, we discovered the app actually sends:</p>
+            <pre><code>['7', '3', '1']  # Command 7, Action 3, Direction 1
+['7', '4', '-1'] # Command 7, Action 4, Direction -1
+['7', '6']       # Command 7, Action 6 (open gripper)
+['7', '7']       # Command 7, Action 7 (close gripper)</code></pre>
+        </div>
+
+        <h2 id="final-fix">✨ The Final Fix: Global Variable Declaration</h2>
+
+        <div class="error">
+            <h3>The Bug</h3>
+            <p>In the <code>start_main()</code> function, we were assigning to <code>_ARM_ACTION</code> without declaring it as global:</p>
+            <pre><code>def start_main():
+    # Missing: global _ARM_ACTION
+    
+    if (_COMMAND == 7):
+        _ARM_ACTION = int(_REC_PARSE_VALUE[1])  # Creates LOCAL variable!</code></pre>
+            <p>Without the <code>global</code> declaration, Python created a <strong>local variable</strong> in start_main() instead of modifying the global one that start_main1() was reading.</p>
+        </div>
+
+        <div class="success">
+            <h3>The Solution</h3>
+            <p>Add the <code>global</code> declaration at the start of the function:</p>
+            <pre><code>def start_main():
+    global _ARM_ACTION  # ✅ Now modifies the global variable!
+    
+    if (_COMMAND == 7):
+        _ARM_ACTION = int(_REC_PARSE_VALUE[1])  # Updates global</code></pre>
+        </div>
+
+        <div class="info">
+            <strong>💡 Key Lesson:</strong> In Python, when you assign to a variable inside a function, Python assumes it's a local variable unless you explicitly declare it as <code>global</code>. Reading a global variable doesn't require the declaration, but writing to it does!
+        </div>
+
+        <h2 id="useful-commands">💻 Useful Commands Reference</h2>
+
+        <h3>Complete Upload Workflow (One Command)</h3>
+        <pre><code># Kill screen, reset, upload, reset again
+killall screen && sleep 2 && \
+~/.venv/bin/python -m esptool --port /dev/ttyUSB0 run && sleep 4 && \
+~/.venv/bin/ampy -p /dev/ttyUSB0 -d 2 put mechdog/main_working.py main.py && \
+~/.venv/bin/python -m esptool --port /dev/ttyUSB0 run</code></pre>
+
+        <h3>Check ESP32 Information</h3>
+        <pre><code># Get chip information
+~/.venv/bin/python -m esptool --port /dev/ttyUSB0 chip_id
+
+# Read MAC address
+~/.venv/bin/python -m esptool --port /dev/ttyUSB0 read_mac
+
+# Check flash size
+~/.venv/bin/python -m esptool --port /dev/ttyUSB0 flash_id</code></pre>
+
+        <h3>File Management</h3>
+        <pre><code># List files on ESP32
+~/.venv/bin/ampy -p /dev/ttyUSB0 ls
+
+# Download file from ESP32
+~/.venv/bin/ampy -p /dev/ttyUSB0 get main.py
+
+# Remove file from ESP32
+~/.venv/bin/ampy -p /dev/ttyUSB0 rm main.py</code></pre>
+
+        <h3>Serial Monitor</h3>
+        <pre><code># Connect with screen (best for monitoring)
+screen /dev/ttyUSB0 115200
+
+# Detach from screen: Ctrl+A then D
+# Reattach: screen -r
+# Kill all screens: killall screen
+
+# Alternative: Use minicom
+minicom -D /dev/ttyUSB0 -b 115200</code></pre>
+
+        <h3>Quick Reset</h3>
+        <pre><code># Reset ESP32 without flashing
+~/.venv/bin/python -m esptool --port /dev/ttyUSB0 run</code></pre>
+
+        <h2 id="troubleshooting">🔧 Troubleshooting</h2>
+
+        <h3>Problem: Permission Denied on /dev/ttyUSB0</h3>
+        <div class="step">
+            <strong>Solution:</strong>
+            <pre><code># Add user to dialout group
+sudo usermod -a -G dialout $USER
+
+# Or change permissions temporarily
+sudo chmod 666 /dev/ttyUSB0</code></pre>
+        </div>
+
+        <h3>Problem: Port Already in Use</h3>
+        <div class="step">
+            <strong>Solution:</strong>
+            <pre><code># Kill any screen sessions
+killall screen
+
+# Find process using the port
+lsof /dev/ttyUSB0
+
+# Kill specific process
+kill &lt;PID&gt;</code></pre>
+        </div>
+
+        <h3>Problem: ESP32 Not Booting</h3>
+        <div class="step">
+            <strong>Solution:</strong>
+            <ol>
+                <li>Erase flash completely: <code>esptool --port /dev/ttyUSB0 erase_flash</code></li>
+                <li>Re-flash firmware: <code>esptool --port /dev/ttyUSB0 write_flash 0x0 MechDog_250505_0x000.bin</code></li>
+                <li>Check power supply - ESP32 needs adequate current</li>
+            </ol>
+        </div>
+
+        <h3>Problem: Servos Not Responding</h3>
+        <div class="step">
+            <strong>Checklist:</strong>
+            <ul>
+                <li>✓ Check servo power supply is connected</li>
+                <li>✓ Verify servo connections to correct ports (9, 10, 11 for arm)</li>
+                <li>✓ Check if BLE is connected (device shows "MechDog_F4")</li>
+                <li>✓ Monitor serial output with screen to see if commands are received</li>
+                <li>✓ Verify global variable declarations in threaded functions</li>
+            </ul>
+        </div>
+
+        <h3>Problem: BLE Not Connecting</h3>
+        <div class="step">
+            <strong>Solution:</strong>
+            <ol>
+                <li>Ensure MechDog is powered on and firmware has booted</li>
+                <li>Check device name in BLE settings: should be "MechDog_F4"</li>
+                <li>Reset ESP32 and wait 10 seconds before connecting</li>
+                <li>Clear Bluetooth cache on phone/tablet</li>
+            </ol>
+        </div>
+
+        <h2>📚 Additional Resources</h2>
+        <ul>
+            <li><a href="https://wiki.hiwonder.com/projects/MechDog/en/latest/">Hiwonder MechDog Official Wiki</a></li>
+            <li><a href="https://wiki.hiwonder.com/projects/MechDog/en/latest/docs/10.Robotic_Arm_Expanded_Lesson.html">Robot Arm Expansion Lesson</a></li>
+            <li><a href="https://wiki.hiwonder.com/projects/MechDog/en/latest/docs/7.Action_Editing_Course.html#app-custom-control">App Custom Control Documentation</a></li>
+            <li><a href="https://docs.espressif.com/projects/esptool/en/latest/">esptool Documentation</a></li>
+            <li><a href="https://docs.micropython.org/en/latest/">MicroPython Documentation</a></li>
+        </ul>
+
+        <h2>✅ Success Criteria</h2>
+        <div class="success">
+            <p>Your setup is complete when:</p>
+            <ul>
+                <li>✅ ESP32 boots without errors</li>
+                <li>✅ BLE device "MechDog_F4" appears in Wonderbot app</li>
+                <li>✅ App can control MechDog movement and postures</li>
+                <li>✅ LEGO expansion controls respond:
+                    <ul>
+                        <li>Action 3/4: Servo 9/10 move incrementally</li>
+                        <li>Action 6: Gripper opens (servo 11 → 1500)</li>
+                        <li>Action 7: Gripper closes (servo 11 → 1000)</li>
+                    </ul>
+                </li>
+                <li>✅ Serial monitor shows command reception and servo movements</li>
+            </ul>
+        </div>
+
+        <hr>
+        <footer style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #ddd; color: #777;">
+            <p><strong>Document Created:</strong> December 27, 2025</p>
+            <p><strong>ESP32 MAC:</strong> 00:4b:12:07:30:f4</p>
+            <p><strong>Firmware Version:</strong> MechDog_250505_0x000.bin</p>
+        </footer>
+    </div>
+</body>
+</html>
