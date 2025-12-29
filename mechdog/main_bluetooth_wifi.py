@@ -709,6 +709,92 @@ def dong_zuo_zu_yun_xing(dong_zuo):
     mechdog.action_run("rotation_roll")
     time.sleep(2)
     return
+  if (dong_zuo==16):
+    # Custom Action 16: Pick up object
+    pickup_object_action()
+    return
+
+
+def pickup_object_action():
+  """Custom action 16: Walk forward, detect and pick up object"""
+  global mechdog
+  global i2csonar
+  
+  DETECTION_DISTANCE = 15
+  PICKUP_DISTANCE = 8
+  FORWARD_SPEED = 60
+  APPROACH_SPEED = 30
+  
+  ARM_BASE_DEFAULT = 500
+  ARM_ELBOW_UP = 2000
+  ARM_ELBOW_DOWN = 800
+  GRIPPER_OPEN = 1500
+  GRIPPER_CLOSED = 1000
+  
+  print("=== Custom Action 16: Pick Up Object ===")
+  
+  # Initialize arm
+  mechdog.set_servo(9, ARM_BASE_DEFAULT, 500)
+  mechdog.set_servo(10, ARM_ELBOW_UP, 500)
+  mechdog.set_servo(11, GRIPPER_OPEN, 500)
+  time.sleep(1)
+  i2csonar.setRGB(0, 0x00, 0xff, 0x00)  # Green - searching
+  
+  # Walk forward scanning
+  mechdog.move(FORWARD_SPEED, 0)
+  object_detected = False
+  
+  for i in range(100):
+    distance = i2csonar.getDistance()
+    if distance < DETECTION_DISTANCE and distance > 2:
+      print(f"Object detected at {distance}cm")
+      mechdog.move(0, 0)
+      object_detected = True
+      i2csonar.setRGB(0, 0xff, 0xff, 0x00)  # Yellow
+      break
+    time.sleep(0.1)
+  
+  if not object_detected:
+    mechdog.move(0, 0)
+    i2csonar.setRGB(0, 0xff, 0x00, 0x00)  # Red - failed
+    time.sleep(1)
+    return
+  
+  # Approach to pickup distance
+  for i in range(50):
+    distance = i2csonar.getDistance()
+    if distance <= PICKUP_DISTANCE:
+      mechdog.move(0, 0)
+      break
+    elif distance > PICKUP_DISTANCE + 5:
+      mechdog.move(APPROACH_SPEED, 0)
+    time.sleep(0.1)
+  
+  mechdog.move(0, 0)
+  time.sleep(0.3)
+  
+  # Lower arm
+  i2csonar.setRGB(0, 0x00, 0xff, 0xff)  # Cyan
+  mechdog.set_servo(10, ARM_ELBOW_DOWN, 1000)
+  time.sleep(1.2)
+  
+  # Close gripper
+  mechdog.set_servo(11, GRIPPER_CLOSED, 500)
+  time.sleep(0.8)
+  
+  # Lift object
+  mechdog.set_servo(10, ARM_ELBOW_UP, 1000)
+  time.sleep(1.2)
+  
+  # Success
+  i2csonar.setRGB(0, 0x00, 0xff, 0x00)  # Green
+  mechdog.transform([0, 0, 0], [0, 5, 0], 200)
+  time.sleep(0.3)
+  mechdog.transform([0, 0, 0], [0, -5, 0], 200)
+  time.sleep(0.3)
+  mechdog.transform([0, 0, 0], [0, 0, 0], 200)
+  
+  print("Object picked up successfully!")
 
 
 # Start all threads
